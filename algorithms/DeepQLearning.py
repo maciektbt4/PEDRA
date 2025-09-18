@@ -324,14 +324,22 @@ def DeepQLearning(cfg, env_process, env_folder):
                             # print(f"[DEBUG] Ball: captured={captured} seen={found}, dx={dx}, dy={dy}, r={r}, reward={total_reward:.3f}")                          
                             # print(f"crash value: {crash}, type: {type(crash)}")
 
-                            ret[name_agent] += total_reward
                             agent_state = agent[name_agent].GetAgentState()
 
-                            if agent_state.has_collided or distance[name_agent] < 0.1:
+                            if agent_state.has_collided or distance[name_agent] < 0.1 or crash:
                                 num_collisions[name_agent] = num_collisions[name_agent] + 1
-                                print('crash')
-                                crash = True
+                                print('crash')                                
                                 total_reward = -1
+                                crash = True
+
+                            if last_crash[name_agent] > 150:
+                                num_collisions[name_agent] = num_collisions[name_agent] + 1
+                                print('Number of steps in episode exceeded')
+                                total_reward -= 1
+                                crash = True    
+
+                            ret[name_agent] += total_reward                       
+                                            
                             data_tuple = []
                             data_tuple.append([current_state[name_agent], action, new_state[name_agent], total_reward, crash])
                             # TODO: one replay memory global, target_agent, agent: DONE

@@ -244,7 +244,7 @@ class PedraAgent():
         # For now, lets keep the reward a simple one
         if C_new < crash_threshold:
             done = True
-            reward = -1
+            reward = 0
         else:
             done = False
             if action == 0:
