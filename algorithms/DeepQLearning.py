@@ -160,7 +160,7 @@ def DeepQLearning(cfg, env_process, env_folder):
     print_orderly('Simulation begins', 80)
 
     last_epoch = -1
-
+    restart_request = False
 
     
     while active:
@@ -180,9 +180,10 @@ def DeepQLearning(cfg, env_process, env_folder):
 
             if automate:
 
-                if iter % algorithm_cfg.ue_restart_interval == 0:
+                if iter % algorithm_cfg.ue_restart_interval == 0 or restart_request:
                     cfg.env_process, cfg.env_folder, automate, agent[name_agent].client = restart_UE_env(cfg)
                     client = agent[name_agent].client
+                    restart_request = False
 
                 if cfg.mode == 'train':
 
