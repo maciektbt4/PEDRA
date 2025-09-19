@@ -71,6 +71,8 @@ def DeepQLearning(cfg, env_process, env_folder):
             global_agent = PedraAgent(algorithm_cfg, client, name='DQN', vehicle_name='global')
             ReplayMemory = Memory(algorithm_cfg.buffer_len)
             target_agent = PedraAgent(algorithm_cfg, client, name='Target', vehicle_name='global')
+            target_agent.network_model.model.set_weights(global_agent.network_model.model.get_weights())
+            print('[Init Sync] global → target')
 
         for drone in range(cfg.num_agents):
             name_agent = "drone" + str(drone)
@@ -82,6 +84,8 @@ def DeepQLearning(cfg, env_process, env_folder):
             if algorithm_cfg.distributed_algo != 'GlobalLearningGlobalUpdate-MA':
                 ReplayMemory[name_agent] = Memory(algorithm_cfg.buffer_len)
                 target_agent[name_agent] = PedraAgent(algorithm_cfg, client, name='Target', vehicle_name=name_agent)
+                target_agent[name_agent].network_model.model.set_weights(agent[name_agent].network_model.model.get_weights())
+                print('[Init Sync] online → target (per agent)')
             current_state[name_agent] = agent[name_agent].get_state()
 
     elif cfg.mode == 'infer':
@@ -326,7 +330,7 @@ def DeepQLearning(cfg, env_process, env_folder):
 
                             agent_state = agent[name_agent].GetAgentState()
 
-                            if agent_state.has_collided or distance[name_agent] < 0.1 or crash:
+                            if agent_state.has_collided or distance[name_agent] < 0.1 or (crash and not captured):
                                 num_collisions[name_agent] = num_collisions[name_agent] + 1
                                 print('crash')                                
                                 total_reward = -1
@@ -344,7 +348,7 @@ def DeepQLearning(cfg, env_process, env_folder):
                             data_tuple.append([current_state[name_agent], action, new_state[name_agent], total_reward, crash])
                             # TODO: one replay memory global, target_agent, agent: DONE
                             err = get_errors(data_tuple,                #1
-                                             choose,                    #2
+                                             True,                    #2
                                              ReplayMemory_this_drone,   #3
                                              algorithm_cfg.input_size,  #4
                                              agent_this_drone,          #5
@@ -365,7 +369,7 @@ def DeepQLearning(cfg, env_process, env_folder):
                                     # Train the RL network
                                     old_states, Qvals, actions, err, idx = minibatch_double(data_tuple,
                                                                                             algorithm_cfg.batch_size,
-                                                                                            choose,
+                                                                                            True,
                                                                                             ReplayMemory_this_drone,
                                                                                             algorithm_cfg.input_size,
                                                                                             agent_this_drone,
@@ -383,15 +387,7 @@ def DeepQLearning(cfg, env_process, env_folder):
 
                                     t2 = time.time()
                                     # TODO global agent, target_agent: DONE
-                                    if choose:
-                                        # Double-DQN
-                                        target_agent_this_drone.network_model.train_n(old_states, Qvals, actions,
-                                                                                      algorithm_cfg.batch_size,
-                                                                                      algorithm_cfg.dropout_rate,
-                                                                                      algorithm_cfg.learning_rate,
-                                                                                      algorithm_cfg.epsilon, iter)
-                                    else:
-                                        agent_this_drone.network_model.train_n(old_states, Qvals, actions,
+                                    agent_this_drone.network_model.train_n(old_states, Qvals, actions,
                                                                                algorithm_cfg.batch_size,
                                                                                algorithm_cfg.dropout_rate,
                                                                                algorithm_cfg.learning_rate,
@@ -510,17 +506,19 @@ def DeepQLearning(cfg, env_process, env_folder):
                     # TODO define and state agents
                     if iter % algorithm_cfg.update_target_interval == 0 and iter > algorithm_cfg.wait_before_train:
 
-                        if algorithm_cfg.distributed_algo == 'GlobalLearningGlobalUpdate-MA':
-                            print('global' + ' - Switching Target Network')
-                            global_agent.network_model.save_network(algorithm_cfg.network_path, episode[name_agent])
+                        if algorithm_cfg.distributed_algo == 'GlobalLearningGlobalUpdate-MA':                           
+                            target_agent.network_model.model.set_weights(
+                                global_agent.network_model.model.get_weights()
+                            )
+                            print(f'[Target Sync] global → target (iter: {iter})')
                         else:
                             for name_agent in name_agent_list:
                                 agent[name_agent].take_action([-1], algorithm_cfg.num_actions, Mode='static')
-                                print(name_agent + ' - Switching Target Network')
-                                agent[name_agent].network_model.save_network(algorithm_cfg.network_path,
-                                                                             episode[name_agent])
+                                target_agent[name_agent].network_model.model.set_weights(
+                                    agent[name_agent].network_model.model.get_weights()
+                                )
+                                print(f'[Target Sync] {name_agent}: online → target (iter: {iter})')
 
-                        choose = not choose
 
                     # if iter % algorithm_cfg.communication_interval == 0 and iter > algorithm_cfg.wait_before_train:
                     #     print('Communicating the weights and averaging them')

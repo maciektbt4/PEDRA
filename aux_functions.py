@@ -363,34 +363,35 @@ def _double_dqn_targets(states_t, next_states_t, actions_t, rewards_t,
     td_errors : float32 [B]   (absolute TD‑error for PER priorities)
     """
     B = tf.shape(actions_t)[0]
+    row_idx = tf.range(B, dtype=tf.int32)
 
     # ---- forward passes ----------------------------------------------------
     # Pass 1: target network on concatenated [states ; next_states]
-    stacked          = tf.concat([states_t, next_states_t], axis=0)            # [2B,H,W,C]
-    all_q_target     = target_net(stacked, training=False)                     # [2B,A](stacked)                     # [2B,A]                     # [2B,A]
-    old_q_target     = all_q_target[:B]                                        # Q_t(s)
-    next_q_target_A  = all_q_target[B:]                                        # Q_t(s')  (A‑net for argmax)
+    # Q_target(s,·)   &   Q_target(s',·)
+    stacked_t     = tf.concat([states_t, next_states_t], axis=0)
+    all_q_t     = target_net(stacked_t, training=False)
+    qt_s        = all_q_t[:B]
+    qt_sprime   = all_q_t[B:]
 
-    # Pass 2: online network on next_states only
-    next_q_online_B  = online_net(next_states_t, training=False)               # Q_o(s')(next_states_t)               # Q_o(s')               # Q_o(s')   (B‑net for value)
+    # Pass 2: online network on concatenated [states ; next_states]
+    # Q_online(s,·)   &   Q_online(s',·)
+    stacked_o   = tf.concat([states_t, next_states_t], 0)
+    qo_all      = online_net(stacked_o,  training=False)
+    qo_s, qo_sprime = qo_all[:B], qo_all[B:]
 
     # ---- Double‑DQN maths --------------------------------------------------
-    best_next        = tf.argmax(next_q_target_A, axis=1, output_type=tf.int32)  # [B]
-    row_idx          = tf.range(B, dtype=tf.int32)
-    gather_nd        = tf.stack([row_idx, best_next], axis=1)                   # [B,2]
+    # a* from online_net, values from target_net
+    best_next   = tf.argmax(qo_sprime, axis=1, output_type=tf.int32)
+    target_vals = tf.gather_nd(qt_sprime, tf.stack([row_idx, best_next], axis=1))
 
-    target_vals      = tf.gather_nd(next_q_online_B, gather_nd)                 # [B]
-    current_q        = tf.gather_nd(old_q_target, tf.stack([row_idx, actions_t], axis=1))
+    # y = r + γ(1-d) Q_target(s', a*)
+    y = rewards_t + (1. - dones_t) * gamma * target_vals
 
-    # target_vals = tf.cast(target_vals, tf.float32)   # ← casting to float32, when mixed precision enabled
-    # current_q   = tf.cast(current_q,   tf.float32)   # ← casting to float32, when mixed precision enabled
+    # PER error from ONLINE: | y - Q_online(s,a) |
+    q_sa_online = tf.gather_nd(qo_s, tf.stack([row_idx, actions_t], axis=1))
+    td_err = tf.abs(y - q_sa_online)    
 
-    td               = rewards_t + (1.0 - dones_t) * gamma * target_vals - current_q  # [B]
-    if clip:
-        td = tf.clip_by_value(td, -1.0, 1.0)
-
-    q_targets        = current_q + td                                           # [B]
-    return q_targets, tf.abs(td)                                                # TD‑error abs for PER
+    return y, td_err
 
 # ---------------------------------------------------------------------------
 # 2. Drop‑in replacement for `minibatch_double` (NumPy → TF → NumPy)
@@ -443,12 +444,8 @@ def minibatch_double(data_tuple,
     rewards_t     = tf.convert_to_tensor(rewards_np)
     dones_t       = tf.convert_to_tensor(dones_np)
 
-    if choose:
-                online_net  = agent.network_model.model  # tf.keras.Model
-                target_net  = target_agent.network_model.model
-    else:
-                online_net  = target_agent.network_model.model
-                target_net  = agent.network_model.model
+    online_net  = agent.network_model.model  # tf.keras.Model
+    target_net  = target_agent.network_model.model
 
     # ------------------------------------------------------------------
     # 2‑c  Call the compiled target calculator (2 forward passes, graph‑fused)
