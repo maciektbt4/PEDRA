@@ -505,23 +505,24 @@ def policy(epsilon, curr_state, iter, b, epsilon_model, wait_before_train, num_a
 
 
 # def reset_to_initial(level, reset_array, client, vehicle_name):
-#     # Make sure nobody moves us
-#     client.enableApiControl(True, vehicle_name)
-#     client.armDisarm(False, vehicle_name)           # keep disarmed!
+    # Make sure nobody moves us
+    # client.enableApiControl(True, vehicle_name)
+    # client.armDisarm(False, vehicle_name)           # keep disarmed!
 
-#     # --- apply the pose you want ---
-#     pose = reset_array[vehicle_name][level]
-#     pose.position.z_val = -4.8                     # <— pick your height
-#     client.simSetVehiclePose(pose, ignore_collison=True,
-#                              vehicle_name=vehicle_name)
-#     time.sleep(0.1)
+    # # --- apply the pose you want ---
+    # pose = reset_array[vehicle_name][level]
+    # # pose.position.z_val = -4.8                     # <— pick your height
+    # client.simSetVehiclePose(pose, ignore_collison=True,
+    #                          vehicle_name=vehicle_name)
+    # time.sleep(0.1)
 
-#     final_pose = client.simGetVehiclePose(vehicle_name)
-#     client.armDisarm(True, vehicle_name)   
-#     # print(f"[DEBUG] x={final_pose.position.x_val:.2f}, "
-#     #       f"y={final_pose.position.y_val:.2f}, z={final_pose.position.z_val:.2f}")
+    # final_pose = client.simGetVehiclePose(vehicle_name)
+    # client.armDisarm(True, vehicle_name)   
+    # print(f"[DEBUG] x={final_pose.position.x_val:.2f}, "
+    #       f"y={final_pose.position.y_val:.2f}, z={final_pose.position.z_val:.2f}")
 
 def reset_to_initial(level, reset_array, client, vehicle_name):
+    client.enableApiControl(True, vehicle_name)
     reset_pos = reset_array[vehicle_name][level]
     client.simSetVehiclePose(reset_pos, ignore_collison=True, vehicle_name=vehicle_name)
     time.sleep(0.1)   
