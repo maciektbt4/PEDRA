@@ -15,7 +15,7 @@ from configs.read_cfg import read_cfg, update_algorithm_cfg
 
 import tensorflow as tf
 from tensorflow import keras
-from util.ball_detector import detect_ball, ball_is_captured, visualize_ball_detection
+from util.object_detector import detect_object, object_is_captured, visualize_object_detection
 from util.run_env_automatically import restart_UE_env
 
 
@@ -39,7 +39,7 @@ def DeepQLearning(cfg, env_process, env_folder):
     client, old_posit, initZ = connect_drone(ip_address=cfg.ip_address, phase=cfg.mode, num_agents=cfg.num_agents)
     initial_pos = old_posit.copy()
     # Load YOLO
-    detect_ball(np.zeros((10,10,3), dtype=np.uint8), use_yolo=True)   # warm-up YOLO
+    detect_object(np.zeros((10,10,3), dtype=np.uint8), use_yolo=True)   # warm-up YOLO
     # Load the initial positions for the environment
     reset_array, reset_array_raw, level_name, crash_threshold = initial_positions(cfg.env_name, initZ, cfg.num_agents)
 
@@ -263,14 +263,14 @@ def DeepQLearning(cfg, env_process, env_folder):
                             raw_frame = agent[name_agent].raw_bgr
 
                             # 2 Run YOLO
-                            found, cx, cy, r, bbox = detect_ball(raw_frame)
+                            found, cx, cy, r, bbox = detect_object(raw_frame)
 
                             # 3 Optionally draw (comment out for speed on headless servers)
                             # visualize_ball_detection(raw_frame, found, cx, cy, r, bbox, name_agent)
 
                             # 4 Check if object is captured - is big enaugh (drone is close enaugh) and in the center
                             frame_h, frame_w = raw_frame.shape[:2]
-                            captured = ball_is_captured(found, cx, cy, r,
+                            captured = object_is_captured(found, cx, cy, r,
                                                         frame_w, frame_h,
                                                         centre_frac_x=0.10,
                                                         centre_frac_y=0.30,

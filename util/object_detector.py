@@ -1,9 +1,9 @@
 """
-Ball detector – now with YOLOv8 fallback.
+Object detector – now with YOLOv8 fallback.
 
-detect_ball(bgr, use_yolo=True) →  (found, cx, cy, r)
-ball_is_captured(...)           →  True/False
-visualize_ball_detection(...)   →  OpenCV overlay (optional)
+detect_object(bgr, use_yolo=True) →  (found, cx, cy, r)
+object_is_captured(...)           →  True/False
+visualize_object_detection(...)   →  OpenCV overlay (optional)
 """
 import cv2, numpy as np
 from ultralytics import YOLO   #  <-- requires  `pip install ultralytics`
@@ -37,9 +37,9 @@ def _yolo_detect(bgr, conf=0.25):
     preds = model(bgr, imgsz=640, conf=conf, iou=0.4, verbose=False)[0]
 
     # COCO “sports ball” → class-id 32  (change if you train a custom class)
-    # keep = preds.boxes.cls.cpu().numpy() == 32
+    keep = preds.boxes.cls.cpu().numpy() == 32
     # COCO bicycle” → class-id 1  (change if you train a custom class)
-    keep = preds.boxes.cls.cpu().numpy() == 1
+    # keep = preds.boxes.cls.cpu().numpy() == 1
     if not np.any(keep):
         return False, None, None, None, None
 
@@ -53,12 +53,12 @@ def _yolo_detect(bgr, conf=0.25):
 # ------------------------------------------------------------------ #
 # PUBLIC API  ------------------------------------------------------- #
 # ------------------------------------------------------------------ #
-def detect_ball(bgr, use_yolo=True):
+def detect_object(bgr, use_yolo=True):
     if use_yolo:
         return _yolo_detect(bgr)
     raise NotImplementedError("HSV mode removed – always use YOLO now.")
 
-def ball_is_captured(found, cx, cy, r,
+def object_is_captured(found, cx, cy, r,
                      frame_w, frame_h,
                      # horizontal window: centre ± 10 % of width
                      centre_frac_x=0.10,
@@ -88,7 +88,7 @@ def ball_is_captured(found, cx, cy, r,
     r_ok = r >= min_radius_frac * frame_h
     return x_ok and y_ok and r_ok
 
-def visualize_ball_detection(frame, found, cx, cy, r, bbox, win="ball"):
+def visualize_object_detection(frame, found, cx, cy, r, bbox, win="ball"):
     """
     Draw a cyan rectangle plus red cross for the detected ball.
     bbox should be (x1,y1,x2,y2) ints – pass straight from _yolo_detect.

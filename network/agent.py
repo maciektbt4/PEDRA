@@ -4,7 +4,7 @@ import airsim, time
 import random
 import matplotlib.pyplot as plt
 from util.transformations import euler_from_quaternion
-from util.ball_detector import detect_ball
+from util.object_detector import detect_object
 import importlib
 
 from aux_functions import get_CustomImage, get_MonocularImageRGB, get_StereoImageRGB
@@ -150,7 +150,7 @@ class PedraAgent():
             # ---------- Ball detection ----------
             # frame_bgr is still uint8 BGR after resize (cv2 default)
             frame_bgr = (state * 255).astype(np.uint8)  # H×W×3
-            found, cx, cy, r, _ = detect_ball(frame_bgr, use_yolo=False)
+            found, cx, cy, r, _ = detect_object(frame_bgr, use_yolo=False)
             self.sees_ball = found                     # store for reward
             if found:
                 self.ball_offset = (cx - self.input_size//2,
