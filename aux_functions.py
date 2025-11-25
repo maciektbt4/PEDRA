@@ -524,6 +524,7 @@ def policy(epsilon, curr_state, iter, b, epsilon_model, wait_before_train, num_a
 def reset_to_initial(level, reset_array, client, vehicle_name):
     client.enableApiControl(True, vehicle_name)
     reset_pos = reset_array[vehicle_name][level]
+    reset_pos.position.z_val = -4.8 
     client.simSetVehiclePose(reset_pos, ignore_collison=True, vehicle_name=vehicle_name)
     time.sleep(0.1)   
 

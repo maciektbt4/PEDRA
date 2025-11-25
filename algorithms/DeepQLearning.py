@@ -134,6 +134,8 @@ def DeepQLearning(cfg, env_process, env_folder):
     ret_array = {}
     distance_array = {}
     epi_env_array = {}
+    seen_per_level = {}
+    captured_per_level = {}
     log_files = {}
 
     # If the phase is inference force the num_agents to 1
@@ -155,6 +157,8 @@ def DeepQLearning(cfg, env_process, env_folder):
         ret_array[name_agent] = np.zeros(shape=len(reset_array[name_agent]))
         distance_array[name_agent] = np.zeros(shape=len(reset_array[name_agent]))
         epi_env_array[name_agent] = np.zeros(shape=len(reset_array[name_agent]), dtype=np.int32)
+        seen_per_level[name_agent] = np.zeros(shape=len(reset_array[name_agent]), dtype=np.int32)
+        captured_per_level[name_agent] = np.zeros(shape=len(reset_array[name_agent]), dtype=np.int32)        
         distance[name_agent] = 0
         # Log file
         log_path = algorithm_cfg.network_path + '/' + name_agent + '/' + cfg.mode + 'log.txt'
@@ -276,8 +280,18 @@ def DeepQLearning(cfg, env_process, env_folder):
                                                         centre_frac_y=0.30,
                                                         min_radius_frac=0.10)
                             
-                            seen_totalizer[name_agent] += 1 if found else 0
-                            captured_totalizer[name_agent] += 1 if captured else 0
+                            current_level_idx = level[name_agent]
+                            # seen_totalizer[name_agent] += 1 if found else 0
+                            # captured_totalizer[name_agent] += 1 if captured else 0
+                            if found:
+                                seen_totalizer[name_agent] += 1
+                                # NOWE: licznik dla bieżącej pozycji
+                                seen_per_level[name_agent][current_level_idx] += 1
+
+                            if captured:
+                                captured_totalizer[name_agent] += 1
+                                # NOWE: licznik dla bieżącej pozycji
+                                captured_per_level[name_agent][current_level_idx] += 1                            
 
                             # 5 Compute off-centre error (dx,dy)   (frame is input_size×input_size)
                             if found:
@@ -429,7 +443,7 @@ def DeepQLearning(cfg, env_process, env_folder):
                                 found,
                                 total_reward)
 
-                            if ret[name_agent] == -1 and last_crash[name_agent] == 0:
+                            if ret[name_agent] == -1 and last_crash[name_agent] == 0 and algorithm_cfg.ue_restart_enabled:
                                 restart_request = True
 
                             if iter % print_interval == 0:
@@ -463,7 +477,16 @@ def DeepQLearning(cfg, env_process, env_folder):
                                     agent[name_agent].network_model.log_to_tensorboard(tag='Object captured', group=name_agent,
                                                                                        value=captured_totalizer[name_agent],
                                                                                        index=episode[name_agent])  
+                                    pos_idx = level[name_agent]
+                                    tag_seen_pos = f'Object seen pos_{pos_idx}'
+                                    tag_captured_pos = f'Object captured pos_{pos_idx}'
 
+                                    agent[name_agent].network_model.log_to_tensorboard(tag=tag_seen_pos, group=name_agent,
+                                                                                        value=seen_per_level[name_agent][pos_idx],
+                                                                                        index=episode[name_agent])
+                                    agent[name_agent].network_model.log_to_tensorboard(tag=tag_captured_pos, group=name_agent,
+                                                                                        value=captured_per_level[name_agent][pos_idx],
+                                                                                        index=episode[name_agent])
                                     agent[name_agent].network_model.log_to_tensorboard(tag='Return', group=name_agent,
                                                                                        value=ret[name_agent],
                                                                                        index=episode[name_agent])
@@ -479,7 +502,13 @@ def DeepQLearning(cfg, env_process, env_folder):
                                                                                        index=iter_totalizer[name_agent])      
                                     agent[name_agent].network_model.log_to_tensorboard(tag='Object captured', group=logs_step_based,
                                                                                        value=captured_totalizer[name_agent],
-                                                                                       index=iter_totalizer[name_agent])                                                                     
+                                                                                       index=iter_totalizer[name_agent])
+                                    agent[name_agent].network_model.log_to_tensorboard(tag=tag_seen_pos, group=name_agent,
+                                                                                        value=seen_per_level[name_agent][pos_idx],
+                                                                                        index=iter_totalizer[name_agent])
+                                    agent[name_agent].network_model.log_to_tensorboard(tag=tag_captured_pos, group=name_agent,
+                                                                                        value=captured_per_level[name_agent][pos_idx],
+                                                                                        index=iter_totalizer[name_agent])                                                                                                        
                                     agent[name_agent].network_model.log_to_tensorboard(tag='Return', group=logs_step_based,
                                                                                        value=ret[name_agent],
                                                                                        index=iter_totalizer[name_agent])
