@@ -471,29 +471,28 @@ def DeepQLearning(cfg, env_process, env_folder):
                                 else:
                                     
                                     # Logs epsiode based
-                                    agent[name_agent].network_model.log_to_tensorboard(tag='Object seen', group=name_agent,
-                                                                                       value=seen_totalizer[name_agent],
-                                                                                       index=episode[name_agent])      
-                                    agent[name_agent].network_model.log_to_tensorboard(tag='Object captured', group=name_agent,
-                                                                                       value=captured_totalizer[name_agent],
-                                                                                       index=episode[name_agent])  
-                                    pos_idx = level[name_agent]
-                                    tag_seen_pos = f'Object seen pos_{pos_idx}'
-                                    tag_captured_pos = f'Object captured pos_{pos_idx}'
-
-                                    agent[name_agent].network_model.log_to_tensorboard(tag=tag_seen_pos, group=name_agent,
-                                                                                        value=seen_per_level[name_agent][pos_idx],
-                                                                                        index=episode[name_agent])
-                                    agent[name_agent].network_model.log_to_tensorboard(tag=tag_captured_pos, group=name_agent,
-                                                                                        value=captured_per_level[name_agent][pos_idx],
-                                                                                        index=episode[name_agent])
-                                    agent[name_agent].network_model.log_to_tensorboard(tag='Return', group=name_agent,
-                                                                                       value=ret[name_agent],
-                                                                                       index=episode[name_agent])
-                                    agent[name_agent].network_model.log_to_tensorboard(tag='Safe Flight',
-                                                                                       group=name_agent,
-                                                                                       value=distance[name_agent],
-                                                                                       index=episode[name_agent])
+                                    # agent[name_agent].network_model.log_to_tensorboard(tag='Object seen', group=name_agent,
+                                    #                                                    value=seen_totalizer[name_agent],
+                                    #                                                    index=episode[name_agent])      
+                                    # agent[name_agent].network_model.log_to_tensorboard(tag='Object captured', group=name_agent,
+                                    #                                                    value=captured_totalizer[name_agent],
+                                    #                                                    index=episode[name_agent])  
+                                    # pos_idx = level[name_agent]
+                                    # tag_seen_pos = f'Object seen pos_{pos_idx}'
+                                    # tag_captured_pos = f'Object captured pos_{pos_idx}'
+                                    # agent[name_agent].network_model.log_to_tensorboard(tag=tag_seen_pos, group=name_agent,
+                                    #                                                     value=seen_per_level[name_agent][pos_idx],
+                                    #                                                     index=episode[name_agent])
+                                    # agent[name_agent].network_model.log_to_tensorboard(tag=tag_captured_pos, group=name_agent,
+                                    #                                                     value=captured_per_level[name_agent][pos_idx],
+                                    #                                                     index=episode[name_agent])
+                                    # agent[name_agent].network_model.log_to_tensorboard(tag='Return', group=name_agent,
+                                    #                                                    value=ret[name_agent],
+                                    #                                                    index=episode[name_agent])
+                                    # agent[name_agent].network_model.log_to_tensorboard(tag='Safe Flight',
+                                    #                                                    group=name_agent,
+                                    #                                                    value=distance[name_agent],
+                                    #                                                    index=episode[name_agent])
                                     
                                     # Logs step based
                                     logs_step_based = "step_based"
@@ -503,12 +502,16 @@ def DeepQLearning(cfg, env_process, env_folder):
                                     agent[name_agent].network_model.log_to_tensorboard(tag='Object captured', group=logs_step_based,
                                                                                        value=captured_totalizer[name_agent],
                                                                                        index=iter_totalizer[name_agent])
-                                    agent[name_agent].network_model.log_to_tensorboard(tag=tag_seen_pos, group=name_agent,
+                                    pos_idx = level[name_agent]
+                                    tag_seen_pos = f'Object seen pos_{pos_idx}'
+                                    tag_captured_pos = f'Object captured pos_{pos_idx}'
+
+                                    agent[name_agent].network_model.log_to_tensorboard(tag=tag_seen_pos, group=logs_step_based,
                                                                                         value=seen_per_level[name_agent][pos_idx],
                                                                                         index=iter_totalizer[name_agent])
-                                    agent[name_agent].network_model.log_to_tensorboard(tag=tag_captured_pos, group=name_agent,
+                                    agent[name_agent].network_model.log_to_tensorboard(tag=tag_captured_pos, group=logs_step_based,
                                                                                         value=captured_per_level[name_agent][pos_idx],
-                                                                                        index=iter_totalizer[name_agent])                                                                                                        
+                                                                                        index=iter_totalizer[name_agent])                                                                                                   
                                     agent[name_agent].network_model.log_to_tensorboard(tag='Return', group=logs_step_based,
                                                                                        value=ret[name_agent],
                                                                                        index=iter_totalizer[name_agent])
