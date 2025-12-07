@@ -478,10 +478,19 @@ def policy_PPO(curr_state, agent):
     action_type = 'Prob'
     return action[0], p_a, action_type
 
-def policy(epsilon, curr_state, iter, b, epsilon_model, wait_before_train, num_actions, agent):
-    qvals = []
+def policy(epsilon, curr_state, iter, b, epsilon_model, wait_before_train, num_actions, agent, epsilon_override=None, epsilon_override_from_iter=None):
+    """
+    Returns:
+      action, action_type, epsilon, qvals
+    """
+    import math, random
+    import numpy as np
 
+    qvals = None
     epsilon_ceil = 0.95
+    greedy_only = False
+
+    # --- schedule jak wcześniej ---
     if epsilon_model == 'linear':
         epsilon = epsilon_ceil * (iter - wait_before_train) / (b - wait_before_train)
         if epsilon > epsilon_ceil:
@@ -492,15 +501,34 @@ def policy(epsilon, curr_state, iter, b, epsilon_model, wait_before_train, num_a
         if epsilon > epsilon_ceil:
             epsilon = epsilon_ceil
 
-    if random.random() > epsilon:
+    elif epsilon_model == 'inference':
+        # w trybie infer chcemy ZAWSZE użyć sieci, zero losowania
+        epsilon = 1.0
+        greedy_only = True
+
+    if (epsilon_override is not None) and (epsilon_override):
+        if (epsilon_override_from_iter is not None) and (iter >= epsilon_override_from_iter):
+            epsilon = 1.0
+            greedy_only = True
+
+    if (not greedy_only) and (random.random() > epsilon):
+        # losowa akcja
         sss = curr_state.shape
         action = np.random.randint(0, num_actions, size=sss[0], dtype=np.int32)
         action_type = 'Rand'
     else:
-        # Use NN to predict action
+        # dokładnie ta sama ścieżka co w treningu
         action = agent.network_model.action_selection(curr_state)
         action_type = 'Pred'
-        # print(action_array/(np.mean(action_array)))
+
+        # tylko do debugowania: policz Q-values osobno
+        try:
+            q_tensor = agent.network_model.model(curr_state, training=False)
+            qvals = q_tensor.numpy()
+        except Exception as e:
+            print("[WARN] Could not compute qvals for debug:", e)
+            qvals = None
+
     return action, action_type, epsilon, qvals
 
 

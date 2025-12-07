@@ -89,22 +89,81 @@ def DeepQLearning(cfg, env_process, env_folder):
             current_state[name_agent] = agent[name_agent].get_state()
 
     elif cfg.mode == 'infer':
+        # ─────────────────────────────────────────────
+        # Evaluation mode: multiple episodes per start position
+        # ─────────────────────────────────────────────
+
+        print_orderly("NETWORK PATH (used in infer)", 80)
+        print("algorithm_cfg.network_path =", algorithm_cfg.network_path)
+        print("[DEBUG] input_size =", algorithm_cfg.input_size)
+        print("[DEBUG] num_actions =", algorithm_cfg.num_actions)
+
         name_agent = 'drone0'
         name_agent_list.append(name_agent)
-        agent[name_agent] = PedraAgent(algorithm_cfg, client, name=name_agent + 'DQN', vehicle_name=name_agent)
+        agent[name_agent] = PedraAgent(algorithm_cfg, client, name='DQN',vehicle_name=name_agent)
 
-        env_cfg = read_cfg(config_filename=env_folder + 'config.cfg')
-        nav_x = []
-        nav_y = []
-        altitude = {}
-        altitude[name_agent] = []
-        p_z, f_z, fig_z, ax_z, line_z, fig_nav, ax_nav, nav = initialize_infer(env_cfg=env_cfg, client=client,
-                                                                               env_folder=env_folder)
-        nav_text = ax_nav.text(0, 0, '')
+        # Default evaluation hyperparameters.
+        # If there are scalar values in cfg, we try to use them; otherwise we fall back to defaults.
+        # default_eval_episodes_per_pos = 3
+        # default_max_steps_per_episode = 300
 
-        # Select initial position
-        reset_to_initial(0, reset_array, client, vehicle_name=name_agent)
+        # try:
+        #     eval_episodes_per_pos = int(getattr(cfg, 'eval_episodes_per_pos', default_eval_episodes_per_pos))
+        # except Exception:
+        #     eval_episodes_per_pos = default_eval_episodes_per_pos
+
+        # try:
+        #     max_steps_per_episode = int(getattr(cfg, 'max_steps_per_episode', default_max_steps_per_episode))
+        # except Exception:
+        #     max_steps_per_episode = default_max_steps_per_episode
+
+        # Overwrite cfg fields with plain integers (no DotMap)
+        # cfg.eval_episodes_per_pos = eval_episodes_per_pos
+        # cfg.max_steps_per_episode = max_steps_per_episode
+        cfg.prev_step = None 
+
+        # Use all reset positions defined for this environment
+        eval_positions = list(range(len(reset_array[name_agent])))
+
+        print_orderly('EVALUATION MODE (infer) - testing multiple start positions', 80)
+        print(f'Positions to test: {eval_positions}')
+        print(f'Episodes per position: {algorithm_cfg.eval_episodes_per_pos}, '
+            f'max steps per episode: {algorithm_cfg.max_steps_per_episode}\n')
+
+        # Stats structure: per position we track successes, number of episodes and total steps
+        eval_stats = {
+            pos_idx: {
+                'successes': 0,
+                'episodes': 0,
+                'steps_sum': 0
+            }
+            for pos_idx in eval_positions
+        }
+
+        # Store evaluation state in cfg so we can access it inside the main loop
+        cfg.eval_positions = eval_positions
+        cfg.eval_stats = eval_stats
+        cfg.current_eval_pos_idx = 0
+        cfg.current_eval_episode = 0
+        cfg.eval_step_in_episode = 0
+
+        # Put the drone on the very first position
+        start_pos = cfg.eval_positions[cfg.current_eval_pos_idx]
+        reset_to_initial(start_pos, reset_array, client, vehicle_name=name_agent)
         old_posit[name_agent] = client.simGetVehiclePose(vehicle_name=name_agent)
+
+        # steps counter
+        cfg.eval_step_in_episode = 0
+
+
+        # ───────────── Tensorboard writer initialization for infer mdoe (TensorBoard + text file) ─────────────
+        tb_infer_writer = tf.summary.create_file_writer(
+            os.path.join(algorithm_cfg.network_path, "inference_logs")
+        )
+
+        infer_log_path = os.path.join(algorithm_cfg.network_path, "inference_log.txt")
+        infer_logfile = open(infer_log_path, "w")
+        infer_logfile.write("pos,episode,step,action,qmax,qmean,state_diff,found,captured,crashed\n")
 
     # Initialize variables
     iter = 1
@@ -249,7 +308,10 @@ def DeepQLearning(cfg, env_process, env_folder):
                                                                                        algorithm_cfg.epsilon_model,
                                                                                        algorithm_cfg.wait_before_train,
                                                                                        algorithm_cfg.num_actions,
-                                                                                       agent_this_drone)
+                                                                                       agent_this_drone,
+                                                                                       algorithm_cfg.epsilon_override,
+                                                                                       algorithm_cfg.epsilon_override_from_iter
+                                                                                       )
 
                             action_word = translate_action(action, algorithm_cfg.num_actions)
                             # Take the action
@@ -543,6 +605,7 @@ def DeepQLearning(cfg, env_process, env_folder):
                                 global_agent.network_model.model.get_weights()
                             )
                             print(f'[Target Sync] global → target (iter: {iter})')
+                            global_agent.network_model.save_network(algorithm_cfg.network_path, episode[name_agent])
                         else:
                             for name_agent in name_agent_list:
                                 agent[name_agent].take_action([-1], algorithm_cfg.num_actions, Mode='static')
@@ -550,6 +613,8 @@ def DeepQLearning(cfg, env_process, env_folder):
                                     agent[name_agent].network_model.model.get_weights()
                                 )
                                 print(f'[Target Sync] {name_agent}: online → target (iter: {iter})')
+                                agent[name_agent].network_model.save_network(algorithm_cfg.network_path,
+                                                                             episode[name_agent])                                
 
 
                     # if iter % algorithm_cfg.communication_interval == 0 and iter > algorithm_cfg.wait_before_train:
@@ -560,70 +625,173 @@ def DeepQLearning(cfg, env_process, env_folder):
                     iter_totalizer[name_agent] += 1
 
                 elif cfg.mode == 'infer':
-                    # Inference phase
-                    agent_state = agent[name_agent].GetAgentState()
-                    if agent_state.has_collided:
-                        print('Drone collided')
-                        print("Total distance traveled: ", np.round(distance[name_agent], 2))
+                    # ─────────────────────────────────────────────
+                    # Evaluation mode – no learning, only testing
+                    # ─────────────────────────────────────────────
+                    name_agent = name_agent_list[0]
+
+                    # 1) Check if we finished all positions and episodes
+                    if cfg.current_eval_pos_idx >= len(cfg.eval_positions):
+
+                        print_orderly('Evaluation finished', 80)
+                        print('\nSummary per start position:')
+                        for pos_idx in cfg.eval_positions:
+                            stats = cfg.eval_stats[pos_idx]
+                            episodes = stats['episodes']
+                            if episodes > 0:
+                                sr = 100.0 * stats['successes'] / episodes
+                                avg_steps = stats['steps_sum'] / episodes
+                            else:
+                                sr = 0.0
+                                avg_steps = 0.0
+                            print(f'  Position {pos_idx}: '
+                                  f'successes = {stats["successes"]}/{episodes} '
+                                  f'({sr:.1f}%), average steps = {avg_steps:.1f}')
+                            
+                            infer_logfile.write(f'Position {pos_idx}: '
+                                  f'successes = {stats["successes"]}/{episodes} '
+                                  f'({sr:.1f}%), average steps = {avg_steps:.1f}\n')
+                            
                         active = False
-                        client.moveByVelocityAsync(vx=0, vy=0, vz=0, duration=1, vehicle_name=name_agent).join()
+                        infer_logfile.write("# Inference finished.\n")
+                        infer_logfile.close()
+                        tb_infer_writer.close()
 
-                        if nav_x:  # Nav_x is empty if the drone collides in first iteration
-                            ax_nav.plot(nav_x.pop(), nav_y.pop(), 'r*', linewidth=20)
-                        file_path = env_folder + 'results/'
-                        fig_z.savefig(file_path + 'altitude_variation.png', dpi=500)
-                        fig_nav.savefig(file_path + 'navigation.png', dpi=500)
-                        close_env(env_process)
-                        print('Figures saved')
+                        continue                      
+
+
+                    # 2) If we are starting a new episode (step 0), reset environment
+                    if cfg.eval_step_in_episode == 0:
+                        pos_idx = cfg.eval_positions[cfg.current_eval_pos_idx]
+                        print(f'\n[Position {pos_idx}] Episode '
+                              f'{cfg.current_eval_episode + 1}/{algorithm_cfg.eval_episodes_per_pos}')
+                        reset_to_initial(pos_idx, reset_array, client, vehicle_name=name_agent)
+                        old_posit[name_agent] = client.simGetVehiclePose(vehicle_name=name_agent)
+
+                    # 3) Get current state and choose action from the network only (no exploration)
+                    current_state[name_agent] = agent[name_agent].get_state()
+                    # Check if the state is valid
+                    if current_state[name_agent] is None or current_state[name_agent].size == 0:
+                        print("[WARN] Invalid state in infer – skipping this step")
+                        # do NOT advance eval_step_in_episode in this case
+                        continue
+
+                    # --- DEBUG: check how much the state changes over time ---
+                    prev = None
+                    if hasattr(cfg, "get"):
+                        # DotMap / dict – użyj .get, to NIE utworzy pustego DotMapa
+                        prev = cfg.get("prev_state", None)
                     else:
-                        posit[name_agent] = client.simGetVehiclePose(vehicle_name=name_agent)
-                        distance[name_agent] = distance[name_agent] + np.linalg.norm(np.array(
-                            [old_posit[name_agent].position.x_val - posit[name_agent].position.x_val,
-                             old_posit[name_agent].position.y_val - posit[name_agent].position.y_val]))
-                        # altitude[name_agent].append(-posit[name_agent].position.z_val+p_z)
-                        altitude[name_agent].append(-posit[name_agent].position.z_val - f_z)
+                        # awaryjnie – dla zwykłych obiektów
+                        prev = getattr(cfg, "prev_state", None)
 
-                        quat = (posit[name_agent].orientation.w_val, posit[name_agent].orientation.x_val,
-                                posit[name_agent].orientation.y_val, posit[name_agent].orientation.z_val)
-                        yaw = euler_from_quaternion(quat)[2]
-
-                        x_val = posit[name_agent].position.x_val
-                        y_val = posit[name_agent].position.y_val
-                        z_val = posit[name_agent].position.z_val
-
-                        nav_x.append(env_cfg.alpha * x_val + env_cfg.o_x)
-                        nav_y.append(env_cfg.alpha * y_val + env_cfg.o_y)
-                        nav.set_data(nav_x, nav_y)
-                        nav_text.remove()
-                        nav_text = ax_nav.text(25, 55, 'Distance: ' + str(np.round(distance[name_agent], 2)),
-                                               style='italic',
-                                               bbox={'facecolor': 'white', 'alpha': 0.5})
-
-                        line_z.set_data(np.arange(len(altitude[name_agent])), altitude[name_agent])
-                        ax_z.set_xlim(0, len(altitude[name_agent]))
-                        fig_z.canvas.draw()
-                        fig_z.canvas.flush_events()
-
-                        current_state[name_agent] = agent[name_agent].get_state()
-                        action, action_type, algorithm_cfg.epsilon, qvals = policy(1, current_state[name_agent], iter,
-                                                                                   algorithm_cfg.epsilon_saturation,
-                                                                                   'inference',
-                                                                                   algorithm_cfg.wait_before_train,
-                                                                                   algorithm_cfg.num_actions,
-                                                                                   agent[name_agent])
-                        action_word = translate_action(action, algorithm_cfg.num_actions)
-                        # Take continuous action
-                        agent[name_agent].take_action(action, algorithm_cfg.num_actions, Mode='static')
-                        old_posit[name_agent] = posit[name_agent]
-
-                        # Verbose and log making
-                        s_log = 'Position = ({:<3.2f},{:<3.2f}, {:<3.2f}) Orientation={:<1.3f} Predicted Action: {:<8s}  '.format(
-                            x_val, y_val, z_val, yaw, action_word
+                    if prev is None or not isinstance(prev, np.ndarray):
+                        # first step – just store current state
+                        cfg.prev_state = current_state[name_agent].copy()
+                        state_diff = 0.0
+                    else:
+                        state_diff = float(
+                            np.mean(np.abs(current_state[name_agent] - prev))
                         )
+                        cfg.prev_state = current_state[name_agent].copy()
 
-                        print(s_log)
-                        log_files[name_agent].write(s_log + '\n')
+                    action, action_type, algorithm_cfg.epsilon, qvals = policy(
+                        1.0,                             # initial epsilon (ignored in 'inference' model)
+                        current_state[name_agent],
+                        iter,
+                        algorithm_cfg.epsilon_saturation,
+                        'inference',                     # epsilon is set to 1.0 inside policy
+                        algorithm_cfg.wait_before_train,
+                        algorithm_cfg.num_actions,
+                        agent[name_agent]
+                    )
 
+                    agent[name_agent].take_action(action, algorithm_cfg.num_actions, Mode='static', inference = True)
+
+                    # 4) YOLO: did we see the object and is it "captured"?
+                    raw_frame = agent[name_agent].raw_bgr
+                    found, cx, cy, r, bbox = detect_object(raw_frame)
+
+                    frame_h, frame_w = raw_frame.shape[:2]
+                    captured = object_is_captured(
+                        found, cx, cy, r,
+                        frame_w, frame_h,
+                        centre_frac_x=0.10,
+                        centre_frac_y=0.30,
+                        min_radius_frac=0.10
+                    )
+
+                    a_val = int(action[0]) if hasattr(action, "__len__") else int(action)
+                    print(
+                        f"[DEBUG] pos={cfg.eval_positions[cfg.current_eval_pos_idx]} "
+                        f"ep={cfg.current_eval_episode+1} step={cfg.eval_step_in_episode} | "
+                        f"action_type={action_type}, action={a_val}, eps={algorithm_cfg.epsilon:.3f} | "
+                        f"state_diff={state_diff:.6f} | "
+                        f"Object found={found}"
+                    )
+           
+                    # per-step logging
+                    if qvals is not None:
+                        qmax = float(np.max(qvals))
+                        qmean = float(np.mean(qvals))
+                    else:
+                        qmax = np.nan
+                        qmean = np.nan
+
+                    with tb_infer_writer.as_default():
+                        tf.summary.scalar("InferenceStep/Qmax", qmax, step=iter)
+                        tf.summary.scalar("InferenceStep/Qmean", qmean, step=iter)
+                        
+                    # 5) Check for collision
+                    agent_state = agent[name_agent].GetAgentState()
+                    crashed = agent_state.has_collided
+
+                    cfg.eval_step_in_episode += 1
+
+                    done = False
+                    success = False
+
+                    # 6) Episode termination conditions
+                    if captured:
+                        success = True
+                        done = True
+                        print("Episode finished successed")
+                    elif crashed or cfg.eval_step_in_episode >= algorithm_cfg.max_steps_per_episode:
+                        success = False
+                        done = True
+                        print("crash")
+
+                    # 7) If episode finished – update statistics and move to next one
+                    if done:
+
+                        pos_idx = cfg.eval_positions[cfg.current_eval_pos_idx]
+                        stats = cfg.eval_stats[pos_idx]
+                        stats['episodes'] += 1
+                        stats['steps_sum'] += cfg.eval_step_in_episode
+                        if success:
+                            stats['successes'] += 1
+
+                        print(f'  → END of episode: success={success}, '
+                              f'steps={cfg.eval_step_in_episode}')
+
+
+                        infer_logfile.write(
+                                f"pos={cfg.eval_positions[cfg.current_eval_pos_idx]+1}; "
+                                f"ep={cfg.current_eval_episode+1}; steps={cfg.eval_step_in_episode}; "
+                                f"success={success}\n"
+                                )                                          
+
+                        # Prepare for next episode / position
+                        cfg.eval_step_in_episode = 0
+                        cfg.current_eval_episode += 1
+
+                        # If we exhausted episodes for this position, move to next position
+                        if cfg.current_eval_episode >= algorithm_cfg.eval_episodes_per_pos:
+                            cfg.current_eval_episode = 0
+                            cfg.current_eval_pos_idx += 1
+
+                    # 8) Increase global step counter (for consistency/logging)
+                    iter += 1
 
 
         except Exception as e:

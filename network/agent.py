@@ -34,7 +34,7 @@ class PedraAgent():
     # Drone related modules
     ###########################################################################
 
-    def take_action(self, action, num_actions, Mode):
+    def take_action(self, action, num_actions, Mode, inference = False):
         # Mode
         # static: The drone moves by position. The position corresponding to the action
         # is calculated and the drone moves to the position and remains still
@@ -65,8 +65,16 @@ class PedraAgent():
         psi = fov_h / sqrt_num_actions * (psi_ind - (sqrt_num_actions - 1) / 2)
 
         if Mode == 'static':
-            noise_theta = (fov_v / sqrt_num_actions) / 6
-            noise_psi = (fov_h / sqrt_num_actions) / 6
+
+            if inference:
+                noise_theta = 0.0
+                noise_psi = 0.0
+
+            else:
+                noise_theta = (fov_v / sqrt_num_actions) / 6
+                noise_psi = (fov_h / sqrt_num_actions) / 6
+
+
 
             psi = psi + random.uniform(-1, 1) * noise_psi
             theta = theta + random.uniform(-1, 1) * noise_theta

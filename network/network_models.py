@@ -165,7 +165,27 @@ class initialize_network_DeepQLearning():
         if not tf.io.gfile.exists(load_path + ".index") and \
            tf.train.latest_checkpoint(os.path.dirname(load_path)) is None:
             raise FileNotFoundError(f"Checkpoint not found: {load_path}")
-        self.checkpoint.restore(load_path).expect_partial()
+        # self.checkpoint.restore(load_path).expect_partial()
+
+        print(f"[DEBUG] load_network from: {load_path}")
+
+        # L2 before load
+        l2_before = sum(np.sum(w.numpy() ** 2) for w in self.model.trainable_weights)
+        print(f"[DEBUG] L2 before_load = {l2_before:.6f}")
+
+        # weights load
+        status = self.checkpoint.restore(load_path)
+        # możesz dać assert, żeby zobaczyć czy wszystko się mapuje
+        try:
+            status.assert_existing_objects_matched()
+            print("[DEBUG] Checkpoint restore: existing objects matched")
+        except Exception as e:
+            print("[DEBUG] Checkpoint restore warning:", e)
+
+        # L2 after load
+        l2_after = sum(np.sum(w.numpy() ** 2) for w in self.model.trainable_weights)
+        print(f"[DEBUG] L2 after_load  = {l2_after:.6f}")
+        print(f"[DEBUG] ΔL2 = {l2_after - l2_before:.6f}")
         print('Model Loaded:', load_path)
 
     # ------------------------------------------------------------------
