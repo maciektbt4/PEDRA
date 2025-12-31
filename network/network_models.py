@@ -45,6 +45,7 @@ class initialize_network_DeepQLearning():
         # Checkpoint for saving and loading the model
         checkpoint_path = os.path.join(cfg.network_path, self.vehicle_name, 'checkpoints')
         self.checkpoint = tf.train.Checkpoint(optimizer=self.optimizer, model=self.model)
+        # self.model_only_ckpt = tf.train.Checkpoint(model=self.model)
         self.checkpoint_manager = tf.train.CheckpointManager(self.checkpoint, checkpoint_path, max_to_keep=5)
 
         # Load custom weights if required
@@ -175,6 +176,7 @@ class initialize_network_DeepQLearning():
 
         # weights load
         status = self.checkpoint.restore(load_path)
+        # status = self.model_only_ckpt.restore(load_path)
         # możesz dać assert, żeby zobaczyć czy wszystko się mapuje
         try:
             status.assert_existing_objects_matched()

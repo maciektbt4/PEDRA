@@ -67,8 +67,10 @@ class PedraAgent():
         if Mode == 'static':
 
             if inference:
-                noise_theta = 0.0
-                noise_psi = 0.0
+                # noise_theta = 0.0
+                # noise_psi = 0.0
+                noise_theta = (fov_v / sqrt_num_actions) / 6
+                noise_psi = (fov_h / sqrt_num_actions) / 6
 
             else:
                 noise_theta = (fov_v / sqrt_num_actions) / 6

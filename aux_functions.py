@@ -884,7 +884,12 @@ def check_user_input(active, automate, agent, client, old_posit, initZ, fig_z, f
                 print('Figures saved')
 
             if event.key == pygame.K_BACKSPACE:
-                client.moveByVelocityAsync(vx=0, vy=0, vz=0, duration=0.1)
+                # client.moveByVelocityAsync(vx=0, vy=0, vz=0, duration=0.1)
                 automate = automate ^ True
+
+            if event.key == pygame.K_r:
+                client, old_posit, initZ = connect_drone(ip_address=cfg.ip_address, phase=cfg.mode,
+                                                         num_agents=cfg.num_agents)
+                agent.client = client
 
     return active, automate, algorithm_cfg, client

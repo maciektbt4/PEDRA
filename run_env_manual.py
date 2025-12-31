@@ -4,7 +4,7 @@ import subprocess, signal, os, time, psutil
 
 CREATE_NEW_PROCESS_GROUP = 0x00000200  # Windows flag
 
-def start_environment(env_name="indoor_cloud"):
+def start_environment(env_name="indoor_twist"):
     env_folder = os.path.join(os.path.dirname(__file__),
                               "unreal_envs", env_name)
     exe_path   = os.path.join(env_folder, f"{env_name}.exe")
