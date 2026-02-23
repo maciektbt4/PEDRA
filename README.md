@@ -1,275 +1,189 @@
-# Programmable Engine for Drone Reinforcement Learning (RL) Applications (PEDRA-2.0)
-![Cover Photo](/images/pedra_cover.png)
-[![Watch the video](/images/pedra_intro.png)](https://www.youtube.com/watch?v=ivQkhl494Sc)
+# PEDRA Object Detection (Master’s Thesis Fork)
 
-## Updates in version 2.0:
-1. Support of multi-drone environments.
-2. Support of Outdoor Environment.
-3. Improved and generalized code structure.
-4. Better and detailed documentation
+A fork of **PEDRA** (Programmable Engine for Drone Reinforcement Learning Applications) extended for a master’s thesis with:
 
-It is recommended to use version 2.0 of PEDRA due to improved stability. If you still want to use PEDRA 1.0 it can be downloaded from [here](https://github.com/aqeelanwar/PEDRA/tree/PEDRA-v1)
+- **Searching and capturing an object** (e.g., a ball) in a simulated environment.
+- Integration of **object detection (YOLOv8)** into the reinforcement learning loop.
+- Improvements to the **DQN/DDQN implementation (+PER depending on configuration)** and experiment logging.
+- Configuration handling and automatic generation of `settings.json` for AirSim.
 
-The tutorial/guidelines to PEDRA is divided into 4 reamde files
-1. Main readme file (this one)
-2. [Environments readme file](/unreal_envs/readme.md)
-3. [Algorithms readme file](/algorithms/readme.md)
-4. [FAQ readme file](faq.md)
+> **Note (important for reproducibility / reviewer comments):** this repository contains research code. Running it requires properly prepared Unreal Engine environments (compiled `.exe`) and compatible Python package versions.
 
-# What is PEDRA?
-PEDRA is a programmable engine for Drone Reinforcement Learning (RL) applications. The engine is developed in Python and is module-wise programmable. PEDRA is targeted mainly at goal-oriented RL problems for drones, but can also be extended to other problems such as SLAM etc. The engine interfaces with Unreal gaming engine using AirSim to create the complete platform. Figure below shows the complete block diagram of the engine. [Unreal engine](https://www.unrealengine.com/en-US/) is used to create 3D realistic environments for the drones to be trained in. Different level of details can be added to make the environment look as realistic or as required as possible. PEDRA comes equip with a list of 3D realistic environments that can be selected by user. Once the environment is selected, it is interfaced with PEDRA using using [AirSim](https://github.com/microsoft/AirSim). AirSim is an open source plugin developed by Microsoft that interfaces Unreal Engine with Python. It provides basic python functionalities controlling the sensory inputs and control signals of the drone. PEDRA is built onto the low level python modules provided by AirSim creating higher level python modules for the purpose of drone RL applications.
+---
 
+## Repository
 
-![Cover Photo](/images/pedra_block.png)
+- Code: `https://github.com/maciektbt4/pedra_object_detection`
 
-![Cover Photo](/images/envs.png)
+---
 
+## Requirements
 
+### System
 
-# PEDRA Workflow
-The complete workflow of PEDRA can be seen in Figure below. The engine takes input from a config file (.cfg). This config file is used to define the problem and the algorithm for solving it. It is algorithmic specific and is used to define algorithm related parameters. Right now the supported problem is camera based autonomous navigation and the supported algorithms are single drone vanilla RL, single drone PER/DDQN based RL. More problems and associated algorithms are being added.
-The most important feature of PEDRA is the high level python modules that can be used as building blocks to implement multiple algorithms for drone oriented applications. The user can either select from the above mentioned algorithms, or can create their own using these building blocks. In case the user wants to define their own problem and associated algorithm, these building blocks can be used. Once these requirements are set, the simulation can begin. PyGame screen can be used to control simulation parameters such as pausing the simulation, modifying algorithmic or training parameters, overwrite config file and save the current state of the simulation etc.  PEDRA generates a number of output files. The log file keeps track of the simulation state per iteration listing useful algorithmic parameters. This is particularly useful when troubleshooting the simulation. Tensorboard can be used to visualize the training plots in run-time. These plots are particularly useful to monitor training parameters and to change the input parameters using the PyGame screen if need be.
-![Cover Photo](/images/pedra_workflow.png)
-![Cover Photo](/images/depth.gif)
+- **Windows 10/11** (startup/cleanup scripts use `taskkill`).
+- **Python 3.8–3.10** (commonly used/tested with TF 2.10).
 
-# Installing PEDRA
-The current version of PEDRA supports Windows and requires python3. Make sure to use python 3.6 to avoid issues during the installation of required packages. It’s advisable to [make a new virtual environment](https://towardsdatascience.com/setting-up-python-platform-for-machine-learning-projects-cfd85682c54b) for this project and install the dependencies. Following steps can be taken to download get started with PEDRA
+### Simulation
 
-## Clone the repository
-To make things simple and easier, PEDRA comes equip with two versions.
-* __PEDRA__: Single drone support:
-* __D-PEDRA__: Distributed multiple drones support
-
-Each of this version is a branch in the repository and can be downloaded as follows
-```
-# PEDRA Single Drone
-git clone --single-branch --branch PEDRA https://github.com/aqeelanwar/PEDRA.git
-
-# Distributed PEDRA Multiple Drones
-git clone --single-branch --branch D-PEDRA https://github.com/aqeelanwar/PEDRA.git
-```
-
-
-## Install required packages
-Make sure you use python 3.6, otheriwise the required packages installation might have issues. The provided requirements.txt file can be used to install all the required packages. Use the following command
-
-### System with NVIDIA GPU
-```
-cd PEDRA
-pip install –r requirements_gpu.txt
-```
-
-### System without NVIDIA GPU
-```
-cd PEDRA
-pip install –r requirements_cpu.txt
-```
-
-This will install the required packages in the activated python environment.
-
-
-## Install Epic Unreal Engine
-The provided simulated environments are created using Unreal gaming engine. In order for these environments to run, you need to have unreal engine installed on the machine. You can follow the guidelines in the link below to install Unreal Engine on your platform. It is advisable to install Unreal Engine version 4.18.3.
-
-[Instructions on installing Unreal engine](https://docs.unrealengine.com/en-US/GettingStarted/Installation/index.html)
-
-
-# Running PEDRA
-Once you have the required packages and software installed, you can take the following steps to run the code
-
-## Download a simulated environment
-You can either manually create your own environment using Unreal Engine (See FAQ below to install AirSim Plugin if you plan on creating your own environment), or you can download one of the environments from the link below.
-
-[Download Environments](https://gtvault-my.sharepoint.com/:f:/g/personal/manwar8_gatech_edu/EnCc2xWKBCpIkWseegrp1EYB69y0zS3nLqzsaSfE-KAD4g?e=HtI1ck)
-
-Following environments are available for download
-
-* Indoor Environments:
-  * Indoor Long Environment
-  * Indoor Twist Environment
-  * Indoor VanLeer Environment
-  * Indoor Techno Environment
-  * Indoor Pyramid Environment
-  * Indoor FrogEyes Environment
-  * Indoor GT Environment
-  * Indoor Complex Environment
-  * Indoor UpDown Environment
-  * Indoor Cloud Environment
-
-
-* Outdoor Environments:
-  * Outdoor Courtyard
-  * Outdoor Forest
-  * Outdoor OldTown
-
-
-More details on the environments can be found here [environment readme](unreal_envs/readme.md).
-
-The link above will help you download the packaged version of the environment for 64-bit windows. Extract and save it in the unreal_env folder.
+Unreal Engine environments built as `.exe` with the following structure:
 
 ```
-# Generic
-|-- PEDRA
-|    |-- unreal_envs
-|    |    |-- <downloaded-environment-folder>
-
-
-# Example
-|-- PEDRA
-|    |-- unreal_envs
-|    |    |-- indoor_cloud
-|    |    |-- outdoor_forest
-|    |
+unreal_envs/
+  indoor_cloud/
+    indoor_cloud.exe
+    config.cfg
+    ...
+  indoor_twist/
+    indoor_twist.exe
+    config.cfg
+    ...
 ```
 
+- **AirSim (plugin/client)** – the project uses the `airsim` Python package.
 
-## Edit the configuration file
-Two types of configuration files are available to control general simulation parameters and algorithmic-specific parameters which can be found in the configs folder
+### ML / CV
 
-### Simulation configurations:
-```
-|-- PEDRA
-|    |-- configs
-|    |    |-- config.cfg
-```
+- TensorFlow + Keras (required for RL models).
+- YOLOv8 (`ultralytics`) for object detection.
 
-This config file is used to set high-level simulation parameters. The complete list of parameters and their explanation can be seen below.
+---
 
-#### General Parameters [general_params]:
+## Installation
 
-| Parameter            | Explanation                                                                          | Possible values                      |
-|------------------    |-----------------------------------------------------------------------------------   |----------------------------------    |
-| run_name             | Name for the current simulation                                                      | Any value                        |
-| env_type             | Type of the environment (to be used in future versions)                              | indoor/outdoor                       |
-| env_name             | Name of the environment to be used in the simulation                                 | indoor_cloud, indoor_techno etc.     |
-| ip_address        | IP address used to communicate between PEDRA and the environment                                                       | e.g. 127.0.0.1                     |
-| algorithm         | The algorithm that needs to be implemented. Details in PEDRA/algorithms/readme.md   | e.g. DeepQLearning                |
-| mode                 | Dictates the mode you want to run the simulation in                              | train / infer / move_around                      |
+### 1) Clone the repo
 
-
-#### Drone Parameters [drone_params]:
-
-| Parameter            | Explanation                                                                          | Possible values                      |
-|------------------    |-----------------------------------------------------------------------------------   |----------------------------------    |
-| SimMode           | Selects one of the two modes for the drone in the simulation                        | ComputerVision / Multirotor       |
-| num_agents        | Number of drones/agents to be used in the simulation         | Any integer > 0                    |
-| drone             | Selects among the 3 drone models                                                    | ARDrone / DJIMavic, DJIPhantom    |
-| ClockSpeed        | Dictates the simulation speed                                                       | Any value > 0                     |
-
-
-#### Camera Parameters [camera_params]:
-
-
-
-| Parameter            | Explanation                                                                          | Possible values                      |
-|------------------    |-----------------------------------------------------------------------------------   |----------------------------------    |
-| width              | Width of the camera frame                                                           | Any integer > 0                      |
-| height           | Height of the camera frame                                                           | Any integer > 0                   |
-| fov_degrees      | Camera field of view in degrees                                                   | Any value >0                     |
-
-
-
-### Algorithm-specific configurations:
-```
-# Example
-|-- PEDRA
-|    |-- configs
-|    |    |-- DeepQLearning.cfg
-|    |    |-- DeepREINFORCE.cfg
+```bash
+git clone https://github.com/maciektbt4/pedra_object_detection.git
+cd pedra_object_detection
 ```
 
-Based on the algorithm selected in the general_param category of the main config file (config.cfg), algorithm-specific config file needs to be edited for user provided parameters. More details on this can be found [here](/algorithms/readme.md)
+### 2) Python environment (recommended: conda)
 
-
-
-## Run the Python code
-Once the config files have been edited according to the user needs, the simulation can be started using the main.py file
-
-
+```bash
+conda create -n pedra_tf2 python=3.8 -y
+conda activate pedra_tf2
 ```
-cd PEDRA
+
+### 3) Install dependencies
+
+The repo includes `requirements_new.txt` (TensorFlow 2.10):
+
+```bash
+pip install -r requirements_new.txt
+```
+
+**Additionally required for YOLOv8:**
+
+```bash
+pip install ultralytics
+```
+
+> If you use GPU: make sure your drivers/CUDA setup matches your TensorFlow version.
+
+---
+
+## Configuration
+
+### `configs/config.cfg` (main runtime configuration)
+
+By default `main.py` reads `configs/config.cfg`. Typical fields:
+
+- `env_name`: environment name (folder under `unreal_envs/`)
+- `ip_address`: AirSim IP (must match the generated `settings.json`)
+- `algorithm`: e.g., `DeepQLearning`
+- `mode`: `train` / `infer` / `move_around`
+
+### `configs/DeepQLearning.cfg` (algorithm configuration)
+
+Contains hyperparameters (e.g., epsilon schedule, replay buffer, target update, etc.).
+
+---
+
+## Running
+
+### Training
+
+1. Make sure the UE executable exists at `unreal_envs/<env_name>/<env_name>.exe`.
+2. Set `mode: train` in `configs/config.cfg`.
+3. Run:
+
+```bash
 python main.py
 ```
 
-Running main.py carries out the following steps
+The script:
+- generates `~\Documents\Airsim\settings.json` based on the config,
+- starts the Unreal Engine environment,
+- launches the algorithm from `algorithms/<algorithm>.py`.
 
-![start_pedra](images/pedra_start.png)
+### Inference (test / demo)
 
-* Attempt to load the config files
-* Attempt to generate the settings.json file required to specify the environment parameters
-* Attempt to start the selected 3D environment
-* Attempt to initialize PyGame screen for user interface
-* Attempt to begin the algorithm
+1. Set `mode: infer` in `configs/config.cfg`.
+2. Run:
 
-
-To speed up the algorithm, the environment rendering is turned off. A detailed documentation on how
-to interact with the environment graphics can be seen [here](/unreal_envs/readme.md). In order to see if the drone is 
-moving around the environment, hit the key 'Z' on the environment screen. A floorplan containing the drone will appear in the
-top right corner.
-
-
-## Available drone agents:
-PEDRA comes equip with 3 drones
-1. ARDrone
-2. DJIMavic
-3. DJIPhantom
-
-The images of these drones can be seen below.
-![drone_types](images/drone_types.png)
-Different action space can be associated with each of these drones. The config file can be used to select one of these drones.
-
-
-## Supported modes:
-The config file can be used to select the mode the simulation needs to be run in.
-* __train__:        Signifies the training mode, used as an input flag for algorithm to be implemented
-* __infer__:        Signifies the inference mode, used as input flag for the algorithm to be implemented. Custom weights can be loaded into the network by setting the following parameters
-
-```
-custom_load_path: True
-custom_load_path: <path_to_weights>
-```
-* __move_around__:  When mode is set to move_around, the simulation starts the environment in free mode. In this mode, keyboard can be used to navigate across the environment. This mode can help the user get an idea of the environment dynamics. The keyboard keys __a, w, s, d, left, right, up and down__ can be used to navigate around.  This can also be helpful when identifying for initial positions for drone. More details [here](unreal_envs/readme.md)
-
-## Viewing learning parameters using tensorboard
-During simulation, tensorflow parameters such as epsilon, learning rate, average Q values, loss and return can be viewed on the tensorboard. The path of the tensorboard log files depends on the env_type, env_name and train_type set in the config file and is given by
-```
-models/trained/<env_type>/<env_name>/Imagenet/   # Generic path
-models/trained/Indoor/indoor_long/Imagenet/      # Example path
+```bash
+python main.py
 ```
 
-Once identified where the log files are stored, following command can be used on the terminal to activate tensorboard.
+### Manual UE environment start (optional)
+
+If you only want to launch the `.exe` without RL:
+
+```bash
+python run_env_manual.py
 ```
-cd models/trained/Indoor/indoor_long/Imagenet/
-tensorboard --logdir <train_type>                # Generic
-tensorboard --logdir e2e                         # Example
-```
 
-The terminal will display the local URL that can be opened up on any browser, and the tensorboard display will appear plotting the DRL parameters on run-time.
+---
 
-![tensorboard](/images/tf.png)
+## Object detection (YOLOv8)
 
-## Run-time controls using PyGame screen
-Algorithmic specific controls can be defined and accessed using the PyGame screen. More information can be found [here](algorithms/readme.md)
+The detector lives in `util/object_detector.py`:
+- loads weights `yolov8n.pt` (included in the repo),
+- by default filters the COCO class **"sports ball"** (class id = 32),
+- exposes:
+  - `detect_object(...)`
+  - `object_is_captured(...)`
+  - `visualize_object_detection(...)`
 
+### Switching to your own model/class
 
-## Output graphs
-The simulation updates two graphs in real-time. The first graph is the altitude variation of the drone, while the other one is the drone trajectory mapped onto the environment floorplan. The trajectory graph also reports the total distance traveled by the drone before crash.
+- replace the weights file (e.g., your `.pt`),
+- adjust class-id filtering in `util/object_detector.py`.
 
-![Inference graphs](/images/infer.gif)
+---
 
-More algorithm specific graphs can be added by making use of the floorplan provide with the environment.
+## Artifacts and results
 
+During training the project may produce:
+- logs and metrics (e.g., TensorBoard, depending on configuration),
+- saved model weights under `models/trained/...`,
+- per-agent text logs.
 
-# Example: Deep Reinforcement Learning with Transfer Learning (DRLwithTL-Sim)
+Exact paths depend on `env_type`, `env_name`, `model_name`, `train_type`, and the `.cfg` settings.
 
-DRLwithTL is a transfer learning based approach to reduce on-board computation required to train a deep neural network for autonomous navigation via Deep Reinforcement Learning for a target algorithmic performance. PEDRA provided environments are used to train the network on a set of meta-environments. These trained meta-weights are then used as initializers to the network in test environments and fine-tuned for the last few fully connected layers. Variation in drone dynamics and environmental characteristics is carried out to show robustness of the approach. The repository containing the code for real environment on a real DJI Tello drone can be found @ [DRLwithTL-Real](https://github.com/aqeelanwar/DRLwithTL_real)
-## Introductory Video
-[![Watch the video](/images/video_cover.png)](https://youtu.be/zmR0KB_qle8)
+---
 
-## PEDRA config for DRLwithTL
-PEDRA's config file can be used to carry out DRLwithTL. The parameter train_type can be used to dictate how many layers from the end needs to be trained.
+## Common issues
 
+- **Missing UE environment / wrong path**: verify `unreal_envs/<env>/<env>.exe` exists.
+- **AirSim connection problems**: IP in `configs/config.cfg` must match `Documents\Airsim\settings.json`.
+- **Missing `ultralytics`**: install with `pip install ultralytics`.
+- **Incompatible package versions**: start from a clean conda env (Python 3.8 is the safest baseline).
 
+---
+
+## Citation
+
+If you use this code or results:
+- cite the author’s master’s thesis,
+- and cite the original PEDRA project (Aqeel Anwar et al.).
+
+---
+
+## License
+
+MIT (as stated in the repository).
 
 # Citing
 If you find this repository useful for your research please use the following bibtex citations
