@@ -126,9 +126,16 @@ The script:
 python main.py
 ```
 
-### Manual UE environment start (optional)
+### UE crash recovery: restart the Unreal environment during training (optional)
 
-If you only want to launch the `.exe` without RL:
+Long training runs may occasionally crash the Unreal Engine process. The helper script `run_env_manual.py`
+is intended to **re-launch the UE `.exe` after a crash** so you can **continue the ongoing training run**
+instead of starting from scratch.
+
+Typical workflow:
+
+1. Keep the training script (`python main.py`) running (do **not** close it).
+2. Start the UE environment again in a separate terminal:
 
 ```bash
 python run_env_manual.py
