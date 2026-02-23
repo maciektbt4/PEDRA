@@ -13,7 +13,7 @@ A fork of **PEDRA** (Programmable Engine for Drone Reinforcement Learning Applic
 
 ## Repository
 
-- Code: `https://github.com/maciektbt4/pedra_object_detection`
+- Code: `https://github.com/maciektbt4/pedra`
 
 ---
 
@@ -54,8 +54,8 @@ unreal_envs/
 ### 1) Clone the repo
 
 ```bash
-git clone https://github.com/maciektbt4/pedra_object_detection.git
-cd pedra_object_detection
+git clone https://github.com/maciektbt4/PEDRA.git
+cd pedra
 ```
 
 ### 2) Python environment (recommended: conda)
